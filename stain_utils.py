@@ -15,6 +15,14 @@ from skimage import morphology, filters
 
 ##########################################
 
+def standardize_brightness(I):
+    """
+    :param I:
+    :return:
+    """
+    p = np.percentile(I, 90)
+    return np.clip(I * 255.0 / p, 0, 255).astype(np.uint8)
+
 def calculate_concentrations(img, norm_he):
     od = RGB_to_OD(img).reshape((-1, 3))
     #norm_he.T shape is 3x2

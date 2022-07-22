@@ -90,15 +90,18 @@ class Normalizer(object):
     This matrix will be used for all the other images as a reference
     """
 
-    def __init__(self, beta=0.15, alpha=1, method = 'transparency', scan = False):
+    def __init__(self, beta=0.15, alpha=1, method = 'transparency', scan = False, standardize_bright = True):
         self.beta = beta #threshold for transparency. Used only if method is 'transparency'
         self.alpha = alpha #percentile to calculate the extreme values in eigenspace 1 means 1 and 99 percentiles
         self.method = method #otsu, gabor or transparency to segment object in the image
         self.stain_matrix_target = None
         self.target_concentrations = None
         self.scan = scan #use SCAN algorithm to refine stain matrix calculation
+        self.standardize_bright = standardize_bright
 
     def fit(self, target):
+        if self.standardize_bright:
+            target = utils.standardize_brightness(target)
         #calculate stain matrix
         self.stain_matrix_target = calculate_stain_matrix(target, self.beta, self.alpha, self.method)
         #calculate stain concentrations
@@ -111,6 +114,9 @@ class Normalizer(object):
                                                                                             self.target_concentrations)
         
     def refine_stain_matrix(self, target, stain, concentrations):
+        
+        if self.standardize_bright:
+            target = utils.standardize_brightness(target)
         
         h, w, c = target.shape
         
@@ -177,6 +183,8 @@ class Normalizer(object):
         return stain, concentrations
         
     def transform(self, I):
+        if self.standardize_bright:
+            I = utils.standardize_brightness(I)
         #transform new image using target image stain matrix as reference
         #stain matrix of source image
         stain_matrix_source = calculate_stain_matrix(I)
@@ -202,6 +210,8 @@ class Normalizer(object):
         return Inorm
 
     def hematoxylin_gray(self, I):
+        if self.standardize_bright:
+            I = utils.standardize_brightness(I)
         
         h, w, c = I.shape
         stain_matrix_source = calculate_stain_matrix(I)
@@ -214,9 +224,12 @@ class Normalizer(object):
         
         H = source_concentrations[:, 0].reshape(h, w)
         H = 10**(-1 * H)
-        return H
+        return np.multiply(255, H).astype(np.uint8)
     
     def hematoxylin_color(self, I):
+        
+        if self.standardize_bright:
+            I = utils.standardize_brightness(I)
         
         h, w, c = I.shape
         norm_he = calculate_stain_matrix(I)
@@ -235,6 +248,9 @@ class Normalizer(object):
         return H_color
     
     def eosin_gray(self, I):
+        
+        if self.standardize_bright:
+            I = utils.standardize_brightness(I)
         h, w, c = I.shape
         stain_matrix_source = calculate_stain_matrix(I)
         source_concentrations = utils.calculate_concentrations(I, stain_matrix_source)
@@ -244,9 +260,12 @@ class Normalizer(object):
                                                                                   source_concentrations)
         E = source_concentrations[:, 1].reshape(h, w)
         E = 10**(-1 * E)
-        return E
+        return np.multiply(255, E).astype(np.uint8)
     
     def eosin_color(self, I):
+        
+        if self.standardize_bright:
+            I = utils.standardize_brightness(I)
         h, w, c = I.shape
         norm_he = calculate_stain_matrix(I)
         C = utils.calculate_concentrations(I, norm_he)
@@ -264,6 +283,9 @@ class Normalizer(object):
         return E_color
     
     def segment_MANA(self, img, threshold_max = 150, thr_small = 0.25, thr_big = 1.5):
+        if self.standardize_bright:
+            img = utils.standardize_brightness(img)
+            
         h_gray = self.hematoxylin_gray(img)
         
         i = preprocess(h_gray)
